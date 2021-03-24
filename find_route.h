@@ -24,9 +24,9 @@ bool    : represents if we are doing uninformed search or informed
 class Node{
     public:
         Node(Node*, std::string, float, float, float, int, bool);
-    
+        
         Node();
-    
+        
         Node(const Node &node);
 
         Node& operator=(const Node& node);
@@ -69,8 +69,7 @@ class CompareMyNodePtr{
         bool operator() (Node* left, Node* right);
 };
 
-
-void expand(Node* n, std::priority_queue<Node*, std::vector<Node*>, CompareMyNodePtr> &f, std::multimap<std::string, std::pair<std::string, float>> a, int &n_gen);
+void expand(Node* n, std::priority_queue<Node*, std::vector<Node*>, CompareMyNodePtr>& f, std::multimap<std::string, std::pair<std::string, float>> a, int& n_gen, std::map<std::string, float> hmap);
 
 void readInputFile(std::string filename, std::multimap<std::string, std::pair<std::string, float>> &data);
 

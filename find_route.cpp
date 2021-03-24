@@ -1,7 +1,7 @@
 #include "find_route.h"
 
 Node::Node(Node* parent, std::string state, float pathCost, float totalPathCost, float evaluationCost, int depth, bool uSearch):
-_parent{parent}, _state{state}, _totalPathCost{totalPathCost}, _evaluationCost{evaluationCost}, _depth{depth}, _uSearch{uSearch}{
+    _parent{ parent }, _state{ state }, _pathCost{ pathCost }, _totalPathCost{ totalPathCost }, _evaluationCost{ evaluationCost }, _depth{ depth }, _uSearch{ uSearch }{
     // Constructor for Node 
 }
 
@@ -55,7 +55,12 @@ Description : Overloading the '>' opertor two sort/compare two Node Pointers (he
 Returns     : a boolean (in this case false) value if the left > right
 */
 bool CompareMyNodePtr::operator() (Node* left, Node *right){
-    return left->getPathCost() > right->getPathCost();
+    if (left->getUSearch()) {
+        return left->totalPathCost() > right->totalPathCost();
+    }
+    else {
+        return (left->evaluationCost() ) > (right->evaluationCost());
+    }
 }
 
 
@@ -153,11 +158,34 @@ Node* reverse(Node* head){
     return head;
 }
 
-void expand(Node* n, std::priority_queue<Node*, std::vector<Node*>, CompareMyNodePtr>& f, std::multimap<std::string, std::pair<std::string, float>> a, int& n_gen) {
+void expand(Node* n, std::priority_queue<Node*, std::vector<Node*>, CompareMyNodePtr>& f, std::multimap<std::string, std::pair<std::string, float>> a, int& n_gen, std::map<std::string, float> hmap) {
+    //Goes through multimap(contains a string that is the start city, then a pair of a string that is the end city and float is the destance between start and end city)
     for (auto i = a.begin(); i != a.end(); ++i) {
-        if (i->first == n->getState()) {
-            Node* successorNode = new Node(&(*n), i->first, i->second.second, i->second.second + n->totalPathCost(), 0, n->getNodeDepth() + 1, n->getUSearch());
-            f.push(successorNode);
+        //if the first column is start state
+        if (i->first == n->getState()) {    //if the start states are the same, get every end state and its path cost starting from that start state, and make a successor node for it
+            if (n->getUSearch()) {
+                Node* successorNode = new Node(&(*n), i->second.first, i->second.second, i->second.second + n->totalPathCost(), 0, n->getNodeDepth() + 1, n->getUSearch());
+                // std::cout << "New Successor: " << successorNode->getState() << " Path cost: " << successorNode->getPathCost() << " Total Path Cost: " << successorNode->totalPathCost() << std::endl;
+                f.push(successorNode);
+            }
+            else {
+                Node* successorNode = new Node(&(*n), i->second.first, i->second.second, i->second.second + n->totalPathCost(), hmap[i->second.first] + n->totalPathCost() + i->second.second, n->getNodeDepth() + 1, n->getUSearch());
+                f.push(successorNode);
+            }
+            n_gen++;
+        }
+        //if second column is start state we need if and if else because text file is undirected representation of a graph
+        else if (i->second.first == n->getState()) {
+            //if the start states are the same, get every end state and its path cost starting from that start state, and make a successor node for it
+            if(n->getUSearch()) {
+                Node* successorNode = new Node(&(*n), i->first, i->second.second, i->second.second + n->totalPathCost(), 0, n->getNodeDepth() + 1, n->getUSearch());
+                // std::cout << "New Successor: " << successorNode->getState() << " Path cost: " << successorNode->getPathCost() << " Total Path Cost: " << successorNode->totalPathCost() << std::endl;
+                f.push(successorNode);
+            }
+            else {
+                Node* successorNode = new Node(&(*n), i->first, i->second.second, i->second.second + n->totalPathCost(), hmap[i->first] + n->totalPathCost() + i->second.second, n->getNodeDepth() + 1, n->getUSearch()); 
+                f.push(successorNode);
+            }
             n_gen++;
         }
     }
@@ -172,6 +200,7 @@ int main(int argc, char** argv){
     std::vector<Node*> holdAll;                                                     // Hold all nodes to be deleted at the end (memory management)
     Node *headGoal = NULL;                                                          // Keeps track of the head (goal state node pointer)
     bool uSearch = false;
+    Node* head = NULL;
       
     std::string goal_node= argv[3];
 
@@ -193,33 +222,59 @@ int main(int argc, char** argv){
 
     // Initialize fringe (priority_queue) with start node and closed as empty
     if (uSearch)
-        fringe.push( new Node(NULL, argv[2], 0.0, 0.0, 0.0, 0, uSearch) );
+        fringe.push( new Node(NULL, argv[2], 0.0, 0.0, 0.0, 0, uSearch) ); 
     else
         fringe.push( new Node(NULL, argv[2], 0.0, 0.0, hValues[argv[2]], 0, uSearch) );
-    closed.push_back(argv[2]);
     
     
     // Perform search
     while (!fringe.empty()){
         // Pop node with the cheapest value
         Node *popNode = fringe.top();
-        closed.push_back(popNode->getState());
         fringe.pop();
-
         // Increment the expanded nodes counter
         nExpanded++;
-
         // Check to see if it is a goal state
+
         if (popNode->getState() == goal_node){
-            //reverse
-            // TODO: Add code to reverse the node and break out of while
-        }else{
-            // Check to see if the node exists in the closed state
-            if ( isExplored(closed, popNode->getState()) ){
+            std::cout << "Nodes Expanded: " << nExpanded << std::endl;
+            std::cout << "Nodes Generated: " << nGenerated << std::endl;
+            std::cout << "Distance: " << popNode->totalPathCost() << " km" << std::endl;
+            std::cout << "Route: " << std::endl;
+
+            // Reverse linked list and display results
+            head = reverse(popNode);
+
+            // Print out linked list (path to goal)
+            while (head->getParentNode() != NULL) {
+                std::cout << head->getState() << " to ";
+                head = head->getParentNode();
+                std::cout << head->getState() << ", " << head->getPathCost() << " km" << std::endl;
+            }
+
+            // TODO: Add code to free memory
+            return EXIT_SUCCESS;
+        }
+        else {
+            //if the popped node is not in the closed set expand, else don't expand and go to next node in fringe
+            if ( !isExplored(closed, popNode->getState()) ){       
                 // TODO: Add code for node to be expanded because it has not yet been expanded
                 closed.push_back(popNode->getState());
-                expand(popNode, fringe, data, nGenerated);
+                if (uSearch) {                                 //Uniform Cost search expanding
+                    expand(popNode, fringe, data, nGenerated, hValues);
+                }
+                else {                                  //A* search expanding
+                    expand(popNode, fringe, data, nGenerated, hValues);
+                }
+                    
             }
+            if (fringe.empty() && popNode->getState() != goal_node) {
+                std::cout << "Nodes Expanded: " << nExpanded << std::endl;
+                std::cout << "Nodes Generated: " << nGenerated << std::endl;
+                std::cout << "Distance: Infinity" << std::endl;
+                std::cout << "Route: \nNone" << std::endl;
+            }
+
         }
     }
 
