@@ -1,5 +1,5 @@
 Benjamin Stanelle   1001534907
-c++11; g++ 9.3.0
+c++17; g++ 9.3.0
 structure is selection. Functions are at top and main is at bottom.
 Make input1.txt, Makefile, and main.cpp are all in the same directory.
 Compile in a linux command line, using Makefile by typing "make main" press enter then type "./main".
